@@ -34,7 +34,23 @@ class OllamaClient(SummarizerPort):
     def _build_prompt(self, article: Article, content: str | None = None) -> str:
         url_info = f"\nURL: {article.url}" if article.url else ""
         content_section = f"\n\nContenido del artículo:\n{content}" if content else ""
-        return f"""Resume el siguiente artículo en 3 puntos clave, primero en español y luego en inglés. Formato: Markdown.
+        return f"""Resume el siguiente artículo en EXACTAMENTE 3 puntos clave.
+
+REGLAS ESTRICTAS:
+- PRIMERA sección debe ser en Español con encabezado "## Español"
+- SEGUNDA sección debe ser en English con encabezado "## English"
+- NUNCA mezcles idiomas dentro de una sección
+- USA exactamente este formato:
+
+## Español
+- punto 1 en español
+- punto 2 en español
+- punto 3 en español
+
+## English
+- point 1 in English
+- point 2 in English
+- point 3 in English
 
 Título: {article.title}{url_info}
 Autor: {article.by}
