@@ -37,20 +37,20 @@ class OllamaClient(SummarizerPort):
         return f"""Resume el siguiente artículo en EXACTAMENTE 3 puntos clave.
 
 REGLAS ESTRICTAS:
-- PRIMERA sección debe ser en Español con encabezado "## Español"
-- SEGUNDA sección debe ser en English con encabezado "## English"
+- PRIMERA sección debe ser en English con encabezado "## English"
+- SEGUNDA sección debe ser en Español con encabezado "## Español"
 - NUNCA mezcles idiomas dentro de una sección
 - USA exactamente este formato:
-
-## Español
-- punto 1 en español
-- punto 2 en español
-- punto 3 en español
 
 ## English
 - point 1 in English
 - point 2 in English
 - point 3 in English
+
+## Español
+- punto 1 en español
+- punto 2 en español
+- punto 3 en español
 
 Título: {article.title}{url_info}
 Autor: {article.by}
