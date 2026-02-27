@@ -32,6 +32,33 @@ async def run_cli(summarize_article: SummarizeArticle, limit: int) -> None:
         console.print()
 
 
+async def run_markdown(
+    summarize_article: SummarizeArticle, limit: int, filename: str
+) -> None:
+    results = await summarize_article.execute(limit)
+
+    lines = ["# HackerDigest\n"]
+    lines.append(f"*{limit} top stories*\n\n---\n")
+
+    for idx, (article, summary) in enumerate(results, 1):
+        lines.append(f"## {idx}. [{article.title}]({article.url})\n")
+        lines.append(f"- **Score:** {article.score} | **Comments:** {article.descendants}\n")
+        lines.append(f"- **By:** {article.by}\n")
+        if article.url:
+            lines.append(f"- **Link:** [Read Full Article]({article.url})\n")
+        lines.append("\n")
+
+        if summary and not summary.startswith("["):
+            lines.append(f"### Summary\n\n{summary}\n\n")
+        else:
+            lines.append(f"*{summary}*\n\n")
+
+        lines.append("---\n")
+
+    with open(filename, "w") as f:
+        f.writelines(lines)
+
+
 def _display_article(idx: int, article: Article, summary: str) -> None:
     table = Table(show_header=False, box=None, padding=(0, 1))
     table.add_column(style="bold cyan", width=4)
