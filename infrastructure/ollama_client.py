@@ -36,21 +36,30 @@ class OllamaClient(SummarizerPort):
         content_section = f"\n\nContenido del artículo:\n{content}" if content else ""
         return f"""Resume el siguiente artículo en EXACTAMENTE 3 puntos clave.
 
-REGLAS ESTRICTAS:
-- PRIMERA sección debe ser en English con encabezado "## English"
-- SEGUNDA sección debe ser en Español con encabezado "## Español"
-- NUNCA mezcles idiomas dentro de una sección
-- USA exactamente este formato:
+## REGLAS ESTRICTAS - OBLIGATORIO SEGUIR AL PIE DE LA LETRA:
 
+### FORMATO REQUERIDO (tu respuesta debe seguir esto exactamente):
 ## English
-- point 1 in English
-- point 2 in English
-- point 3 in English
+- point 1 in English (máximo 15 palabras)
+- point 2 in English (máximo 15 palabras)
+- point 3 in English (máximo 15 palabras)
 
 ## Español
-- punto 1 en español
-- punto 2 en español
-- punto 3 en español
+- punto 1 en español (máximo 15 palabras)
+- punto 2 en español (máximo 15 palabras)
+- punto 3 en español (máximo 15 palabras)
+
+### PROHIBIDO ABSOLUTAMENTE:
+- ❌ NO agregues contenido después de ## Español
+- ❌ NO repitas el contenido en otro idioma (no pongas "Spanish")
+- ❌ NO agregues introducciones como "Here's a summary..." o "En resumen..."
+- ❌ NO agregues conclusiones o comentarios adicionales
+- ❌ NO escribas más de 3 puntos por sección
+- ❌ NO pongas más de 15 palabras por punto
+
+### SEÑAL DE PARADA:
+TU RESPUESTA DEBE TERMINAR DESPUÉS DEL ÚLTIMO PUNTO EN ESPAÑOL.
+NO ESCRIBAS NADA MÁS.
 
 Título: {article.title}{url_info}
 Autor: {article.by}
