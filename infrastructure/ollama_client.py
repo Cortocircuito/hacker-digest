@@ -27,6 +27,7 @@ class OllamaClient(SummarizerPort):
             "system": system_prompt,
             "prompt": user_prompt,
             "stream": False,
+            "stop": ["PROHIBIDO", "SEÑAL"],
         }
         response = await self._client.post("/api/generate", json=payload)
         response.raise_for_status()
