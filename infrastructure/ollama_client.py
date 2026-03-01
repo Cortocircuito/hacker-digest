@@ -20,10 +20,12 @@ class OllamaClient(SummarizerPort):
         )
 
     async def summarize(self, article: Article, content: str | None = None) -> str:
-        prompt = self._build_prompt(article, content)
+        system_prompt = self._build_system_prompt()
+        user_prompt = self._build_user_prompt(article, content)
         payload = {
             "model": self._model,
-            "prompt": prompt,
+            "system": system_prompt,
+            "prompt": user_prompt,
             "stream": False,
         }
         response = await self._client.post("/api/generate", json=payload)
@@ -31,14 +33,11 @@ class OllamaClient(SummarizerPort):
         data = response.json()
         return data.get("response", "").strip()
 
-    def _build_prompt(self, article: Article, content: str | None = None) -> str:
-        url_info = f"\nURL: {article.url}" if article.url else ""
-        content_section = f"\n\nContenido del artículo:\n{content}" if content else ""
-        return f"""Resume el siguiente artículo en EXACTAMENTE 3 puntos clave.
+    def _build_system_prompt(self) -> str:
+        return """Eres un asistente que resume artículos en exactamente 3 puntos clave, primero en español y luego en inglés.
 
-## REGLAS ESTRICTAS - OBLIGATORIO SEGUIR AL PIE DE LA LETRA:
+## FORMATO OBLIGATORIO (responde SOLO esto, sin introducir ni concluir):
 
-### FORMATO REQUERIDO (tu respuesta debe seguir esto exactamente):
 ## Categories
 category 1, category 2
 
@@ -52,22 +51,18 @@ category 1, category 2
 - punto 2 en español (máximo 15 palabras)
 - punto 3 en español (máximo 15 palabras)
 
-### PROHIBIDO ABSOLUTAMENTE:
-- ❌ NO pongas más de 2 categorías
-- ❌ NO uses categorías similares o repetidas (ej: no pongas "AI" y "Artificial Intelligence")
-- ❌ NO agregues contenido después de ## Español
-- ❌ NO repitas el contenido en otro idioma (no pongas "Spanish")
-- ❌ NO agregues introducciones como "Here's a summary..." o "En resumen..."
-- ❌ NO agregues conclusiones o comentarios adicionales
-- ❌ NO escribas más de 3 puntos por sección
-- ❌ NO pongas más de 15 palabras por punto
+## REGLAS:
+- MAXIMO 2 categorías, diferentes entre sí
+- MAXIMO 3 puntos por sección
+- MAXIMO 15 palabras por punto
+- NO escribas nada después del último punto en español
+- NO repitas el contenido en otro idioma
+- NO agregues introducciones ni conclusiones"""
 
-### SEÑAL DE PARADA:
-TU RESPUESTA DEBE TERMINAR DESPUÉS DEL ÚLTIMO PUNTO EN ESPAÑOL.
-NO ESCRIBAS NADA MÁS.
-
-Título: {article.title}{url_info}
+    def _build_user_prompt(self, article: Article, content: str | None = None) -> str:
+        url_info = f"\nURL: {article.url}" if article.url else ""
+        content_section = f"\n\nContenido del artículo:\n{content}" if content else ""
+        return f"""Título: {article.title}{url_info}
 Autor: {article.by}
 Puntos: {article.score}
-Comentarios: {article.descendants}{content_section}
-"""
+Comentarios: {article.descendants}{content_section}"""
