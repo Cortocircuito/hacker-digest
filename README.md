@@ -8,30 +8,32 @@ CLI application that fetches top stories from Hacker News and generates bilingua
 - Extract full article content using newspaper4k
 - Generate bilingual summaries with local Ollama model
 - Beautiful CLI output with Rich
+- Export to Markdown format
 
 ## Architecture
 
 ```
 hacker_digest/
-├── domain/           # Entities and interfaces
-├── infrastructure/   # HN API, Ollama, Content Extractor
-├── usecases/         # Business logic
-├── interface/        # CLI
+├── domain/           # Entities and interfaces (Article, ports)
+├── infrastructure/   # HN API client, Ollama client, Content Extractor
+├── usecases/         # Business logic (SummarizeArticle)
+├── interface/        # CLI output (Rich, Markdown)
 └── main.py           # Entry point
 ```
 
 ## Requirements
 
 - Python 3.8+
-- [Ollama](https://ollama.ai/) installed and running
+- [Ollama](https://ollama.ai/) installed and running on `localhost:11434`
 
 ## Installation
 
 ```bash
 # Clone the repository
-cd hacker_digest
+git clone https://github.com/yourusername/hacker-digest.git
+cd hacker-digest
 
-# Create virtual environment (optional but recommended)
+# Create virtual environment (recommended)
 python -m venv venv
 source venv/bin/activate  # Linux/Mac
 # venv\Scripts\activate   # Windows
@@ -49,11 +51,20 @@ ollama pull llama3:8b
 # Run with defaults (10 stories, llama3:8b)
 python main.py
 
-# Custom limit
+# Custom number of stories
 python main.py --limit 5
 
-# Different model
+# Different Ollama model
 python main.py --model mistral
+
+# Export to markdown file
+python main.py --markdown
+
+# Export with custom limit
+python main.py --markdown --limit 20
+
+# Custom output directory
+python main.py --markdown --output-dir ./my-digests
 ```
 
 ### Options
@@ -62,13 +73,44 @@ python main.py --model mistral
 |------|---------|-------------|
 | `--limit` | 10 | Number of stories to fetch |
 | `--model` | llama3:8b | Ollama model to use |
+| `--markdown` | false | Export output to markdown file |
+| `--output-dir` | digests | Directory for markdown exports |
 
-## Examples
+## Configuration
 
-```bash
-# Fetch 3 stories with mistral
-python main.py --limit 3 --model mistral
+### Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `OLLAMA_HOST` | localhost:11434 | Ollama API endpoint |
+
+## Troubleshooting
+
+### Ollama not running
+
 ```
+Error: Connection error: [Errno 111] Connection refused
+```
+
+Make sure Ollama is running:
+```bash
+ollama serve
+```
+
+### Model not found
+
+```
+Error: model 'llama3:8b' not found
+```
+
+Pull the required model:
+```bash
+ollama pull llama3:8b
+```
+
+### Content extraction fails
+
+Some websites block content extraction. The app will skip to the next story.
 
 ## License
 
