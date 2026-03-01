@@ -39,6 +39,9 @@ class OllamaClient(SummarizerPort):
 ## REGLAS ESTRICTAS - OBLIGATORIO SEGUIR AL PIE DE LA LETRA:
 
 ### FORMATO REQUERIDO (tu respuesta debe seguir esto exactamente):
+## Categories
+category 1, category 2
+
 ## English
 - point 1 in English (máximo 15 palabras)
 - point 2 in English (máximo 15 palabras)
@@ -50,6 +53,8 @@ class OllamaClient(SummarizerPort):
 - punto 3 en español (máximo 15 palabras)
 
 ### PROHIBIDO ABSOLUTAMENTE:
+- ❌ NO pongas más de 2 categorías
+- ❌ NO uses categorías similares o repetidas (ej: no pongas "AI" y "Artificial Intelligence")
 - ❌ NO agregues contenido después de ## Español
 - ❌ NO repitas el contenido en otro idioma (no pongas "Spanish")
 - ❌ NO agregues introducciones como "Here's a summary..." o "En resumen..."
