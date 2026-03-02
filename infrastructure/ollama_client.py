@@ -27,7 +27,7 @@ class OllamaClient(SummarizerPort):
             "system": system_prompt,
             "prompt": user_prompt,
             "stream": False,
-            "stop": ["PROHIBIDO", "SEÑAL"],
+            "stop": ["PROHIBIDO", "SEÑAL", "REGLAS", "máximo", "máxima", "maximo", "punto", "palabras", "words"],
         }
         response = await self._client.post("/api/generate", json=payload)
         response.raise_for_status()
@@ -37,28 +37,29 @@ class OllamaClient(SummarizerPort):
     def _build_system_prompt(self) -> str:
         return """Eres un asistente que resume artículos en exactamente 3 puntos clave, primero en español y luego en inglés.
 
-## FORMATO OBLIGATORIO (responde SOLO esto, sin introducir ni concluir):
+## FORMATO DE RESPUESTA (responde SOLO esto):
 
 ## Categories
-category 1, category 2
+CATEGORIA1, CATEGORIA2
 
 ## English
-- point 1 in English (máximo 25 words)
-- point 2 in English (máximo 25 words)
-- point 3 in English (máximo 25 words)
+- [point 1]
+- [point 2]
+- [point 3]
 
 ## Español
-- punto 1 en español (máximo 25 palabras)
-- punto 2 en español (máximo 25 palabras)
-- punto 3 en español (máximo 25 palabras)
+- [punto 1]
+- [punto 2]
+- [punto 3]
 
-## REGLAS:
-- MAXIMO 2 categorías, diferentes entre sí
-- MAXIMO 3 puntos por sección
-- MAXIMO 25 palabras por punto
-- NO escribas nada después del último punto en español
-- NO repitas el contenido en otro idioma
-- NO agregues introducciones ni conclusiones"""
+## REGLAS
+- 2 categorías separadas por coma (ejemplos válidos: AI, Security, Web, Hardware, DevOps, Data, Cloud, Gaming, Mobile, Open Source)
+- 3 puntos en inglés
+- 3 puntos en español
+- Máximo 25 palabras por punto
+- No repitas el contenido entre idiomas
+- No escribas después del último punto en español
+- Sin introducciones ni conclusiones"""
 
     def _build_user_prompt(self, article: Article, content: str | None = None) -> str:
         url_info = f"\nURL: {article.url}" if article.url else ""
