@@ -20,27 +20,34 @@ class OllamaClient(SummarizerPort):
         )
 
     async def summarize(self, article: Article, content: str | None = None) -> str:
-        system_prompt = self._build_system_prompt()
+        system_prompt = self._build_system_prompt(article)
         user_prompt = self._build_user_prompt(article, content)
         payload = {
             "model": self._model,
             "system": system_prompt,
             "prompt": user_prompt,
             "stream": False,
-            "stop": ["PROHIBIDO", "SEÑAL", "REGLAS", "máximo", "máxima", "maximo", "punto", "palabras", "words"],
+            "stop": ["PROHIBIDO", "SEÑAL", "RULES", "máximo", "máxima", "maximo", "punto", "palabras", "words", "CATEGORY", "Categories"],
         }
         response = await self._client.post("/api/generate", json=payload)
         response.raise_for_status()
         data = response.json()
         return data.get("response", "").strip()
 
-    def _build_system_prompt(self) -> str:
-        return """Eres un asistente que resume artículos en exactamente 3 puntos clave, primero en español y luego en inglés.
+    def _build_system_prompt(self, article: Article) -> str:
+        url_info = article.url if article.url else "N/A"
+        return f"""You summarize articles into exactly 3 key points, first in English then in Spanish.
 
-## FORMATO DE RESPUESTA (responde SOLO esto):
+## CONTEXT:
+Author: {article.by}
+Score: {article.score}
+Comments: {article.descendants}
+URL: {url_info}
+
+## OUTPUT FORMAT (respond ONLY this):
 
 ## Categories
-CATEGORIA1, CATEGORIA2
+CATEGORY1, CATEGORY2
 
 ## English
 - [point 1]
@@ -52,19 +59,15 @@ CATEGORIA1, CATEGORIA2
 - [punto 2]
 - [punto 3]
 
-## REGLAS
-- 2 categorías separadas por coma (ejemplos válidos: AI, Security, Web, Hardware, DevOps, Data, Cloud, Gaming, Mobile, Open Source)
-- 3 puntos en inglés
-- 3 puntos en español
-- Máximo 25 palabras por punto
-- No repitas el contenido entre idiomas
-- No escribas después del último punto en español
-- Sin introducciones ni conclusiones"""
+## RULES
+- 2 comma-separated categories from: AI, Security, Web, Hardware, DevOps, Data, Cloud, Gaming, Mobile, Open Source, Privacy, APIs, Tools, Learning
+- 3 English points
+- 3 Spanish points
+- Max 25 words per point
+- No content repetition between languages
+- Stop after last Spanish point
+- No introductions or conclusions"""
 
     def _build_user_prompt(self, article: Article, content: str | None = None) -> str:
-        url_info = f"\nURL: {article.url}" if article.url else ""
-        content_section = f"\n\nContenido del artículo:\n{content}" if content else ""
-        return f"""Título: {article.title}{url_info}
-Autor: {article.by}
-Puntos: {article.score}
-Comentarios: {article.descendants}{content_section}"""
+        content_section = f"\n\n{content}" if content else ""
+        return f"""Title: {article.title}{content_section}"""
