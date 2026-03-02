@@ -43,19 +43,19 @@ class OllamaClient(SummarizerPort):
 category 1, category 2
 
 ## English
-- point 1 in English (máximo 15 palabras)
-- point 2 in English (máximo 15 palabras)
-- point 3 in English (máximo 15 palabras)
+- point 1 in English (máximo 25 words)
+- point 2 in English (máximo 25 words)
+- point 3 in English (máximo 25 words)
 
 ## Español
-- punto 1 en español (máximo 15 palabras)
-- punto 2 en español (máximo 15 palabras)
-- punto 3 en español (máximo 15 palabras)
+- punto 1 en español (máximo 25 palabras)
+- punto 2 en español (máximo 25 palabras)
+- punto 3 en español (máximo 25 palabras)
 
 ## REGLAS:
 - MAXIMO 2 categorías, diferentes entre sí
 - MAXIMO 3 puntos por sección
-- MAXIMO 15 palabras por punto
+- MAXIMO 25 palabras por punto
 - NO escribas nada después del último punto en español
 - NO repitas el contenido en otro idioma
 - NO agregues introducciones ni conclusiones"""
