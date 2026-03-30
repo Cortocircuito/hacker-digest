@@ -27,7 +27,7 @@ class OllamaClient(SummarizerPort):
             "system": system_prompt,
             "prompt": user_prompt,
             "stream": False,
-            "stop": ["PROHIBIDO", "SEÑAL", "RULES", "máximo", "máxima", "maximo", "punto", "palabras", "words", "CATEGORY", "Categories"],
+            "stop": ["## RULES", "RULES:", "CATEGORIES:", "## FORMAT", "FORMAT:"],
         }
         response = await self._client.post("/api/generate", json=payload)
         response.raise_for_status()
@@ -36,41 +36,37 @@ class OllamaClient(SummarizerPort):
 
     def _build_system_prompt(self, article: Article) -> str:
         url_info = article.url if article.url else "N/A"
-        return f"""Act as an expert in information synthesis.
-        
-Summarize the following text, extracting the 5 main ideas in bullet points.
-You summarize into exactly 5 key points, first show that 5 key points in English then show again that 5 key point in Spanish.
-At the end of each language provide a one-paragraph conclusion
+        return f"""You are a concise summarizer. Extract exactly 3 key points from the article below.
+
+First list 3 points in ENGLISH, then repeat 3 points in SPANISH.
+End with a short 1-sentence conclusion in both languages.
+
+## FORMAT:
+ENGLISH:
+- 
+- 
+- 
+Conclusion: 
+
+ESPAÑOL:
+- 
+- 
+- 
+Conclusión: 
+
+## CATEGORIES:
+Choose 2: AI, Security, Web, Hardware, DevOps, Data, Cloud, Gaming, Mobile, Open Source, Privacy, APIs, Tools, Learning
 
 ## CONTEXT:
-Author: {article.by}
-Score: {article.score}
-Comments: {article.descendants}
+Title: {article.title}
+Author: {article.by} | Score: {article.score} | Comments: {article.descendants}
 URL: {url_info}
 
-## OUTPUT FORMAT (respond ONLY this):
-
-## Categories
-CATEGORY1, CATEGORY2
-
-## English
-- [point 1]
-- [point 2]
-- [point 3]
-
-## Español
-- [punto 1]
-- [punto 2]
-- [punto 3]
-
-## RULES
-- 2 comma-separated categories from: AI, Security, Web, Hardware, DevOps, Data, Cloud, Gaming, Mobile, Open Source, Privacy, APIs, Tools, Learning
-- 3 English points
-- 3 Spanish points
-- Max 25 words per point
-- No content repetition between languages
-- Stop after last Spanish conclusion
-- No introductions"""
+## RULES:
+- Each bullet max 20 words
+- No repetition between languages
+- No intro text, start directly with bullets
+- Output only the format above"""
 
     def _build_user_prompt(self, article: Article, content: str | None = None) -> str:
         content_section = f"\n\n{content}" if content else ""
