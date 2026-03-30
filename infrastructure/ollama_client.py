@@ -36,7 +36,11 @@ class OllamaClient(SummarizerPort):
 
     def _build_system_prompt(self, article: Article) -> str:
         url_info = article.url if article.url else "N/A"
-        return f"""You summarize articles into exactly 3 key points, first in English then in Spanish.
+        return f"""Act as an expert in information synthesis.
+        
+Summarize the following text, extracting the 5 main ideas in bullet points.
+You summarize into exactly 5 key points, first show that 5 key points in English then show again that 5 key point in Spanish.
+At the end of each language provide a one-paragraph conclusion
 
 ## CONTEXT:
 Author: {article.by}
@@ -65,8 +69,8 @@ CATEGORY1, CATEGORY2
 - 3 Spanish points
 - Max 25 words per point
 - No content repetition between languages
-- Stop after last Spanish point
-- No introductions or conclusions"""
+- Stop after last Spanish conclusion
+- No introductions"""
 
     def _build_user_prompt(self, article: Article, content: str | None = None) -> str:
         content_section = f"\n\n{content}" if content else ""
