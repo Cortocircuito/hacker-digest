@@ -10,7 +10,7 @@ OLLAMA_BASE_URL = "http://localhost:11434"
 class OllamaClient(SummarizerPort):
     def __init__(
         self,
-        model: str = "llama3:8b",
+        model: str = "gemma2:2b",
         client: httpx.AsyncClient | None = None,
     ) -> None:
         self._model = model
@@ -27,7 +27,7 @@ class OllamaClient(SummarizerPort):
             "system": system_prompt,
             "prompt": user_prompt,
             "stream": False,
-            "stop": ["## RULES", "RULES:", "CATEGORIES:", "## FORMAT", "FORMAT:"],
+            "stop": ["## FORMATO", "FORMATO:", "## RULES", "RULES:", "## FORMAT", "FORMAT:"],
         }
         response = await self._client.post("/api/generate", json=payload)
         response.raise_for_status()
@@ -36,37 +36,27 @@ class OllamaClient(SummarizerPort):
 
     def _build_system_prompt(self, article: Article) -> str:
         url_info = article.url if article.url else "N/A"
-        return f"""You are a concise summarizer. Extract exactly 3 key points from the article below.
+        return f"""Eres un resumidor conciso. Resume el siguiente artículo en un párrafo detallado.
 
-First list 3 points in ENGLISH, then repeat 3 points in SPANISH.
-End with a short 1-sentence conclusion in both languages.
+Primero en ESPAÑOL (máximo 30 palabras), luego en ENGLISH (máximo 30 palabras).
 
-## FORMAT:
-ENGLISH:
-- 
-- 
-- 
-Conclusion: 
-
+## FORMATO:
 ESPAÑOL:
-- 
-- 
-- 
-Conclusión: 
+[resumen en español]
 
-## CATEGORIES:
-Choose 2: AI, Security, Web, Hardware, DevOps, Data, Cloud, Gaming, Mobile, Open Source, Privacy, APIs, Tools, Learning
+ENGLISH:
+[summary in english]
 
-## CONTEXT:
-Title: {article.title}
-Author: {article.by} | Score: {article.score} | Comments: {article.descendants}
+## CONTEXTO:
+Título: {article.title}
+Autor: {article.by} | Puntos: {article.score} | Comentarios: {article.descendants}
 URL: {url_info}
 
-## RULES:
-- Each bullet max 20 words
-- No repetition between languages
-- No intro text, start directly with bullets
-- Output only the format above"""
+## REGLAS:
+- Máximo 30 palabras por idioma
+- Sin conclusiones
+- Sin texto introductorio, empieza directamente con el resumen
+- Solo el formato de arriba"""
 
     def _build_user_prompt(self, article: Article, content: str | None = None) -> str:
         content_section = f"\n\n{content}" if content else ""
