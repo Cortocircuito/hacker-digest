@@ -71,27 +71,23 @@ class OllamaClient(SummarizerPort):
 
     def _build_system_prompt(self, article: Article) -> str:
         url_info = article.url if article.url else "N/A"
-        return f"""Eres un resumidor conciso. Resume el siguiente artículo en un párrafo detallado.
+        return f"""Eres un resumidor experto. Resume el siguiente artículo siguiendo exactamente este formato:
 
-Primero en ESPAÑOL (máximo 30 palabras), luego en ENGLISH (máximo 30 palabras).
-
-## FORMATO:
 ESPAÑOL:
-[resumen en español]
+[resumen conciso en español]
 
 ENGLISH:
-[summary in english]
+[concise summary in english]
 
-## CONTEXTO:
-Título: {article.title}
-Autor: {article.by} | Puntos: {article.score} | Comentarios: {article.descendants}
-URL: {url_info}
+REGLAS:
+- 2-3 oraciones por idioma (aprox 20-40 palabras)
+- No incluyas palabras como "Este artículo trata de..." o "In summary..."
+- Usa solo información del artículo proporcionado
+- Si se proporciona contenido del artículo, úsalo para hacer el resumen más específico
+- Si solo tienes el título, basa tu resumen únicamente en él
+- NO agregues información externa ni conclusiones
+- Responde ÚNICAMENTE con el formato de arriba, nada más"""
 
-## REGLAS:
-- Máximo 30 palabras por idioma
-- Sin conclusiones
-- Sin texto introductorio, empieza directamente con el resumen
-- Solo el formato de arriba"""
 
     def _build_user_prompt(self, article: Article, content: str | None = None) -> str:
         content_section = f"\n\n{content}" if content else ""
