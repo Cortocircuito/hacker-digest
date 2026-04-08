@@ -6,7 +6,7 @@ from pathlib import Path
 
 from infrastructure.content_extractor import NewspaperExtractor
 from infrastructure.hn_client import HNClient
-from infrastructure.ollama_client import OllamaClient
+from infrastructure.ollama_client import OllamaClient, check_ollama_installed
 from interface.cli import run_cli, run_markdown
 from usecases.summarize_article import SummarizeArticle
 
@@ -25,8 +25,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--model",
         type=str,
-        default="llama3:8b",
-        help="Ollama model to use (default: llama3:8b)",
+        default="gemma2:2b",
+        help="Ollama model to use (default: gemma2:2b)",
     )
     parser.add_argument(
         "--markdown",
@@ -45,10 +45,13 @@ def parse_args() -> argparse.Namespace:
 async def main() -> None:
     args = parse_args()
 
+    check_ollama_installed()
+
     limit = args.limit if args.limit != 10 else 30 if args.markdown else 10
 
     hn_client = HNClient()
     ollama_client = OllamaClient(model=args.model)
+    await ollama_client.ensure_model()
     content_extractor = NewspaperExtractor()
     summarize_article = SummarizeArticle(
         hn_client, ollama_client, content_extractor
