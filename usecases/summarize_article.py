@@ -1,5 +1,9 @@
+import logging
+
 from domain.entities import Article
 from domain.services import ArticleContentPort, HackerNewsPort, SummarizerPort
+
+logger = logging.getLogger(__name__)
 
 
 class SummarizeArticle:
@@ -23,6 +27,12 @@ class SummarizeArticle:
                     content = await self._content_extractor.extract_content(article.url)
                 summary = await self._summarizer.summarize(article, content)
                 results.append((article, summary))
-            except Exception:
+            except Exception as e:
+                logger.error(
+                    "Failed to summarize article %d '%s': %s",
+                    article.id,
+                    article.title,
+                    e,
+                )
                 results.append((article, "[Error generating summary]"))
         return results

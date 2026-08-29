@@ -1,52 +1,31 @@
-# HackerDigest - Specification Document
+# HackerDigest
 
-## 1. Project Overview
+## Overview
 
-**Project Name:** HackerDigest  
-**Type:** CLI Application  
-**Core Functionality:** Fetch top stories from Hacker News and generate bilingual summaries (Spanish/English) using a local Ollama model  
-**Target Users:** Developers and tech enthusiasts who want quick, bilingual summaries of HN top stories
+HackerDigest is an async Python CLI that fetches Hacker News top stories, extracts linked article content, and produces concise Spanish/English summaries with a local Ollama model.
 
----
-
-## 2. Architecture
-
-### Clean Architecture Layers
+## Architecture
 
 ```
-hacker_digest/
-├── domain/           # Enterprise Business Rules
-│   ├── entities.py   # Article entity
-│   └── services.py  # Abstract interfaces (ports)
-├── infrastructure/  # Frameworks & Drivers
-│   ├── hn_client.py  # Hacker News API client
-│   └── ollama_client.py
-├── usecases/         # Application Business Rules
-│   └── summarize_article.py
-├── interface/        # Interface Adapters
-│   └── cli.py       # Rich CLI
-└── main.py          # Entry point
+domain/
+  entities.py            # Article domain entity
+  services.py            # Protocol ports
+infrastructure/
+  hn_client.py           # Hacker News Firebase API adapter
+  ollama_client.py       # Ollama API adapter and model availability check
+  content_extractor.py   # Newspaper4k content extractor
+usecases/
+  summarize_article.py   # Orchestrates retrieval, extraction, and summaries
+interface/
+  cli.py                 # Rich terminal and Markdown output
+tests/                   # pytest tests
+main.py                  # Composition root and argument parsing
 ```
 
-### SOLID Principles
-- **S**ingle Responsibility: Each layer has one job
-- **O**pen/Closed: Extend behavior without modifying existing code
-- **L**iskov Substitution: Interfaces allow swapping implementations
-- **I**nterface Segregation: Small, focused interfaces
-- **D**ependency Inversion: High-level modules don't depend on low-level modules
+Keep dependencies directed inward: domain and use cases must not import infrastructure or interface modules. Keep ports small and use `Protocol` for adapters.
 
-### KISS
-- Avoid over-engineering
-- Simple functions over complex patterns
-- One concept per file
+## Domain Contracts
 
----
-
-## 3. Domain Layer
-
-### Entities
-
-**Article**
 ```python
 @dataclass
 class Article:
@@ -55,123 +34,59 @@ class Article:
     url: str | None
     by: str
     score: int
-    time: int  # Unix timestamp
-    descendants: int  # comment count
+    time: int
+    descendants: int
 ```
 
-### Service Interfaces (Ports)
-
-**HackerNewsPort**
 ```python
 class HackerNewsPort(Protocol):
     async def get_top_stories(self, limit: int = 10) -> list[Article]: ...
-    async def get_article(self, article_id: int) -> Article: ...
-```
 
-**SummarizerPort**
-```python
+class ArticleContentPort(Protocol):
+    async def extract_content(self, url: str) -> str | None: ...
+
 class SummarizerPort(Protocol):
-    async def summarize(self, article: Article) -> str: ...
+    async def summarize(self, article: Article, content: str | None = None) -> str: ...
 ```
 
----
+## Runtime Behavior
 
-## 4. Infrastructure Layer
+- The default Ollama model is `gemma2:2b`.
+- Ollama must be installed and running locally at `http://localhost:11434`.
+- `OllamaClient.ensure_model()` accepts an exact model tag and accepts `<model>:latest` when the requested model has no tag. Do not treat arbitrary tags as interchangeable.
+- `HNClient` and `OllamaClient` own async HTTP clients and must be used as async context managers, or explicitly closed with `await close()`.
+- `NewspaperExtractor` limits both its async wait and the underlying Newspaper4k request through `request_timeout`.
+- Extraction failures are non-fatal: the summarizer receives `None` and falls back to the title. Summary failures produce `[Error generating summary]` for that article.
+- Log operational failures with context; do not silently swallow exceptions.
 
-### HNClient
-- Uses `https://hacker-news.firebaseio.com/v0/` API
-- Fetches top stories IDs, then article details
-- Returns `Article` domain entities
+## CLI
 
-### OllamaClient
-- Connects to `http://localhost:11434/api/generate`
-- Model: `llama3:8b` or `mistral` (configurable)
-- Prompt template:
-  ```
-  Resume el siguiente artículo en 3 puntos clave, primero en español y luego en inglés. Formato: Markdown.
-  
-  Título: {title}
-  URL: {url}
-  ```
-
----
-
-## 5. Use Cases
-
-### SummarizeArticle
-```python
-class SummarizeArticle:
-    def __init__(
-        self,
-        hn_client: HackerNewsPort,
-        summarizer: SummarizerPort
-    ): ...
-    
-    async def execute(self, limit: int = 10) -> list[tuple[Article, str]]:
-        # 1. Get top stories
-        # 2. For each article, generate summary
-        # 3. Return list of (article, summary)
-```
-
----
-
-## 6. Interface Layer (CLI)
-
-### Using `rich` library
-
-**Features:**
-- Table display for articles
-- Color-coded output
-- Progress indicators during API calls
-- Error handling with styled messages
-
-**Commands:**
 ```bash
-python main.py                    # Show top 10 stories with summaries
-python main.py --limit 20        # Custom number of stories
-python main.py --model mistral   # Use different Ollama model
-python main.py --help            # Show help
+python main.py
+python main.py --limit 20
+python main.py --model mistral
+python main.py --markdown --output-dir digests
 ```
 
----
+`--limit` must be a positive integer. Markdown mode defaults to 30 stories when `--limit` is omitted.
 
-## 7. Technical Requirements
+## Dependencies And Verification
 
-### Dependencies
+Runtime dependencies are in `requirements.txt`. Test dependencies are in `requirements-dev.txt`.
+
+```bash
+python -m pip install -r requirements-dev.txt
+python -m pytest
+python -m compileall -q domain infrastructure interface usecases main.py
 ```
-requests>=2.31.0
-rich>=13.7.0
-httpx>=0.26.0  # For async HTTP
-pydantic>=2.5.0
-```
 
-### Type Checking
-- Strict type hints throughout
-- Run: `mypy . --strict`
+The test suite uses `pytest-asyncio` with `asyncio_mode = auto` from `pytest.ini`. Tests should use mocked HTTP or extractor calls; do not require a running Ollama service or live Hacker News requests.
 
-### Error Handling
-- Custom exceptions in domain layer
-- Graceful degradation if Ollama unavailable
-- Retry logic for API calls
+## Engineering Guidelines
 
----
-
-## 8. Implementation Order
-
-1. **domain/entities.py** - Define Article dataclass
-2. **domain/services.py** - Define protocol interfaces
-3. **infrastructure/hn_client.py** - Implement HN API client
-4. **infrastructure/ollama_client.py** - Implement Ollama client
-5. **usecases/summarize_article.py** - Implement use case
-6. **interface/cli.py** - Build Rich CLI
-7. **main.py** - Entry point with argparse
-
----
-
-## 9. Future Extensibility
-
-- Add caching layer (Redis/File)
-- Add GUI interface (replace `interface/cli.py`)
-- Add export to Markdown/HTML
-- Add filtering by score/comments
-- Add "save for later" feature
+- Use strict type hints and keep code compatible with Python 3.10+.
+- Prefer small, direct changes over new abstractions.
+- Preserve article ordering when introducing concurrency.
+- Validate external API payloads before constructing domain entities.
+- Avoid blocking the event loop. Run unavoidable blocking work in a thread and ensure its library-level network timeout is configured.
+- Do not add caching, Redis, databases, or new export formats unless the task requires them.

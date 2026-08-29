@@ -1,3 +1,5 @@
+import asyncio
+import logging
 import shutil
 import subprocess
 import sys
@@ -7,6 +9,7 @@ import httpx
 from domain.entities import Article
 from domain.services import SummarizerPort
 
+logger = logging.getLogger(__name__)
 
 OLLAMA_BASE_URL = "http://localhost:11434"
 DEFAULT_MODEL = "gemma2:2b"
@@ -34,25 +37,56 @@ class OllamaClient(SummarizerPort):
             timeout=120.0,
         )
 
+    async def close(self) -> None:
+        await self._client.aclose()
+
+    async def __aenter__(self) -> "OllamaClient":
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
+        await self.close()
+
     async def ensure_model(self) -> None:
         """Check if the model exists locally; pull it if it does not."""
-        response = await self._client.get("/api/tags")
-        response.raise_for_status()
+        try:
+            response = await self._client.get("/api/tags")
+            response.raise_for_status()
+        except httpx.HTTPError as e:
+            logger.error("Failed to connect to Ollama: %s", e)
+            print(
+                "Error: Could not connect to Ollama. Is it running?\n"
+                "Start it with: ollama serve"
+            )
+            sys.exit(1)
+
         data = response.json()
-        available = {m["name"] for m in data.get("models", [])}
+        if not isinstance(data, dict) or not isinstance(data.get("models"), list):
+            raise ValueError("Invalid model list response from Ollama")
+        available = {
+            name
+            for model in data["models"]
+            if isinstance(model, dict)
+            if isinstance(name := model.get("name"), str)
+        }
 
-        # Normalise: Ollama may store tags as "gemma2:2b" or without tag as "gemma2"
-        model_name = self._model
-        model_base = model_name.split(":")[0]
-        exists = any(
-            name == model_name or name.split(":")[0] == model_base
-            for name in available
-        )
+        if not self._is_model_available(available):
+            print(f"Model '{self._model}' not found locally. Pulling it now...")
+            try:
+                await asyncio.to_thread(
+                    subprocess.run,
+                    ["ollama", "pull", self._model],
+                    check=True,
+                )
+                print(f"Model '{self._model}' pulled successfully.")
+            except subprocess.CalledProcessError as e:
+                logger.error("Failed to pull model '%s': %s", self._model, e)
+                print(f"Error: Failed to pull model '{self._model}'")
+                sys.exit(1)
 
-        if not exists:
-            print(f"Model '{self._model}' not found locally. Pulling it now…")
-            subprocess.run(["ollama", "pull", self._model], check=True)
-            print(f"Model '{self._model}' pulled successfully.")
+    def _is_model_available(self, available: set[str]) -> bool:
+        if self._model in available:
+            return True
+        return ":" not in self._model and f"{self._model}:latest" in available
 
     async def summarize(self, article: Article, content: str | None = None) -> str:
         system_prompt = self._build_system_prompt(article)
@@ -70,7 +104,6 @@ class OllamaClient(SummarizerPort):
         return data.get("response", "").strip()
 
     def _build_system_prompt(self, article: Article) -> str:
-        url_info = article.url if article.url else "N/A"
         return f"""Eres un resumidor experto. Resume el siguiente artículo siguiendo exactamente este formato:
 
 ESPAÑOL:
@@ -87,7 +120,6 @@ REGLAS:
 - Si solo tienes el título, basa tu resumen únicamente en él
 - NO agregues información externa ni conclusiones
 - Responde ÚNICAMENTE con el formato de arriba, nada más"""
-
 
     def _build_user_prompt(self, article: Article, content: str | None = None) -> str:
         content_section = f"\n\n{content}" if content else ""
