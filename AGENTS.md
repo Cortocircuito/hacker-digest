@@ -56,6 +56,7 @@ class SummarizerPort(Protocol):
 - `OllamaClient.ensure_model()` accepts an exact model tag and accepts `<model>:latest` when the requested model has no tag. Do not treat arbitrary tags as interchangeable.
 - `HNClient` and `OllamaClient` own async HTTP clients and must be used as async context managers, or explicitly closed with `await close()`.
 - `NewspaperExtractor` limits both its async wait and the underlying Newspaper4k request through `request_timeout`.
+- Article extraction runs with a maximum concurrency of three; Ollama summaries are sequential to avoid saturating modest CPU-only hardware.
 - Extraction failures are non-fatal: the summarizer receives `None` and falls back to the title. Summary failures produce `[Error generating summary]` for that article.
 - Log operational failures with context; do not silently swallow exceptions.
 

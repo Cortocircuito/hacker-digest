@@ -1,9 +1,13 @@
-from typing import Callable
-
 from rich.console import Console
 from rich.markdown import Markdown
 from rich.panel import Panel
-from rich.progress import Progress, SpinnerColumn, TaskID, TextColumn
+from rich.progress import (
+    BarColumn,
+    Progress,
+    SpinnerColumn,
+    TaskProgressColumn,
+    TextColumn,
+)
 from rich.table import Table
 
 from domain.entities import Article
@@ -19,11 +23,21 @@ async def run_cli(summarize_article: SummarizeArticle, limit: int) -> None:
     with Progress(
         SpinnerColumn(),
         TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        TaskProgressColumn(),
         console=console,
     ) as progress:
         task = progress.add_task("Loading from Hacker News...", total=None)
-        results = await summarize_article.execute(limit)
-        progress.update(task, completed=True)
+
+        def update_progress(phase: str, completed: int, total: int) -> None:
+            progress.update(
+                task,
+                completed=completed,
+                total=total,
+                description=f"{phase} stories ({completed}/{total})...",
+            )
+
+        results = await summarize_article.execute(limit, progress_callback=update_progress)
 
     console.print(f"\n[green]Loaded {len(results)} stories[/green]\n")
 
@@ -77,9 +91,3 @@ def _display_article(idx: int, article: Article, summary: str) -> None:
         console.print(Panel(Markdown(summary), border_style="cyan", padding=(1, 2)))
     else:
         console.print(f"[red]{summary}[/red]")
-
-
-def create_progress_callback(progress: Progress, task_id: TaskID) -> Callable[[str], None]:
-    def callback(description: str) -> None:
-        progress.update(task_id, description=description)
-    return callback

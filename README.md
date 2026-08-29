@@ -7,6 +7,7 @@ HackerDigest is an asynchronous CLI that fetches Hacker News top stories and gen
 - Fetches top stories from the Hacker News Firebase API.
 - Extracts linked article content with Newspaper4k before summarizing.
 - Generates bilingual summaries with a local Ollama model.
+- Extracts up to three articles concurrently while keeping Ollama summaries sequential for modest hardware.
 - Renders results in a Rich-powered terminal UI.
 - Exports a daily digest in Markdown.
 - Continues when an article cannot be extracted or summarized.
