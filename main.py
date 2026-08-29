@@ -1,5 +1,6 @@
 import argparse
 import asyncio
+import logging
 import sys
 from datetime import date
 from pathlib import Path
@@ -43,35 +44,43 @@ def parse_args() -> argparse.Namespace:
 
 
 async def main() -> None:
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    )
+
     args = parse_args()
+
+    if args.limit <= 0:
+        print("Error: --limit must be a positive integer")
+        sys.exit(1)
 
     check_ollama_installed()
 
     limit = args.limit if args.limit != 10 else 30 if args.markdown else 10
 
-    hn_client = HNClient()
-    ollama_client = OllamaClient(model=args.model)
-    await ollama_client.ensure_model()
-    content_extractor = NewspaperExtractor()
-    summarize_article = SummarizeArticle(
-        hn_client, ollama_client, content_extractor
-    )
+    async with HNClient() as hn_client, OllamaClient(model=args.model) as ollama_client:
+        await ollama_client.ensure_model()
+        content_extractor = NewspaperExtractor()
+        summarize_article = SummarizeArticle(
+            hn_client, ollama_client, content_extractor
+        )
 
-    try:
-        if args.markdown:
-            output_dir = Path(args.output_dir)
-            output_dir.mkdir(exist_ok=True)
-            filename = output_dir / f"hacker-digest-{date.today()}.md"
-            await run_markdown(summarize_article, limit, str(filename))
-            print(f"Saved to {filename}")
-        else:
-            await run_cli(summarize_article, limit)
-    except KeyboardInterrupt:
-        print("\n\nInterrupted by user")
-        sys.exit(1)
-    except Exception as e:
-        print(f"Error: {e}")
-        sys.exit(1)
+        try:
+            if args.markdown:
+                output_dir = Path(args.output_dir)
+                output_dir.mkdir(exist_ok=True, parents=True)
+                filename = output_dir / f"hacker-digest-{date.today()}.md"
+                await run_markdown(summarize_article, limit, str(filename))
+                print(f"Saved to {filename}")
+            else:
+                await run_cli(summarize_article, limit)
+        except KeyboardInterrupt:
+            print("\n\nInterrupted by user")
+            sys.exit(1)
+        except Exception as e:
+            print(f"Error: {e}")
+            sys.exit(1)
 
 
 if __name__ == "__main__":

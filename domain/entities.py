@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from urllib.parse import urlparse
 
 
 @dataclass
@@ -14,6 +15,5 @@ class Article:
     @property
     def domain(self) -> str | None:
         if self.url:
-            from urllib.parse import urlparse
             return urlparse(self.url).netloc
         return None
