@@ -24,10 +24,7 @@ class NewspaperExtractor(ArticleContentPort):
             return None
 
     def _fetch_article(self, url: str) -> newspaper.Article:
-        paper = newspaper.build(url, memoize_articles=False)
-        if paper.articles:
-            article = paper.articles[0]
-            article.download()
-            article.parse()
-            return article
-        raise ValueError("No articles found")
+        article = newspaper.Article(url)
+        article.download()
+        article.parse()
+        return article
