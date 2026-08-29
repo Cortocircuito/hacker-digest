@@ -1,116 +1,101 @@
 # HackerDigest
 
-CLI application that fetches top stories from Hacker News and generates bilingual summaries (Spanish/English) using a local Ollama model.
+HackerDigest is an asynchronous CLI that fetches Hacker News top stories and generates concise Spanish/English summaries with a local Ollama model.
 
 ## Features
 
-- Fetch top stories from Hacker News API
-- Extract full article content using newspaper4k
-- Generate bilingual summaries with local Ollama model
-- Beautiful CLI output with Rich
-- Export to Markdown format
-
-## Architecture
-
-```
-hacker_digest/
-├── domain/           # Entities and interfaces (Article, ports)
-├── infrastructure/   # HN API client, Ollama client, Content Extractor
-├── usecases/         # Business logic (SummarizeArticle)
-├── interface/        # CLI output (Rich, Markdown)
-└── main.py           # Entry point
-```
+- Fetches top stories from the Hacker News Firebase API.
+- Extracts linked article content with Newspaper4k before summarizing.
+- Generates bilingual summaries with a local Ollama model.
+- Renders results in a Rich-powered terminal UI.
+- Exports a daily digest in Markdown.
+- Continues when an article cannot be extracted or summarized.
 
 ## Requirements
 
-- Python 3.8+
-- [Ollama](https://ollama.ai/) installed and running on `localhost:11434`
+- Python 3.10+
+- [Ollama](https://ollama.com/) installed and running at `http://localhost:11434`
 
 ## Installation
 
 ```bash
-# Clone the repository
-git clone https://github.com/yourusername/hacker-digest.git
+git clone https://github.com/Cortocircuito/hacker-digest.git
 cd hacker-digest
 
-# Create virtual environment (recommended)
 python -m venv venv
-source venv/bin/activate  # Linux/Mac
-# venv\Scripts\activate   # Windows
+source venv/bin/activate  # Linux/macOS
+# venv\Scripts\activate  # Windows
 
-# Install dependencies
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
+```
 
-# Pull Ollama model (if not already done)
-ollama pull llama3:8b
+The default model is `gemma2:2b`. HackerDigest checks for it and pulls it automatically when absent. You can also pull it manually:
+
+```bash
+ollama pull gemma2:2b
 ```
 
 ## Usage
 
 ```bash
-# Run with defaults (10 stories, llama3:8b)
+# Show the top 10 stories
 python main.py
 
-# Custom number of stories
-python main.py --limit 5
+# Fetch a custom number of stories
+python main.py --limit 20
 
-# Different Ollama model
+# Use a different local model
 python main.py --model mistral
 
-# Export to markdown file
+# Write a Markdown digest; defaults to 30 stories
 python main.py --markdown
 
-# Export with custom limit
-python main.py --markdown --limit 20
-
-# Custom output directory
-python main.py --markdown --output-dir ./my-digests
+# Choose a destination directory and story limit
+python main.py --markdown --limit 20 --output-dir my-digests
 ```
 
 ### Options
 
 | Flag | Default | Description |
-|------|---------|-------------|
-| `--limit` | 10 | Number of stories to fetch |
-| `--model` | llama3:8b | Ollama model to use |
-| `--markdown` | false | Export output to markdown file |
-| `--output-dir` | digests | Directory for markdown exports |
+| --- | --- | --- |
+| `--limit` | `10` | Positive number of stories to fetch. Markdown mode uses `30` when omitted. |
+| `--model` | `gemma2:2b` | Local Ollama model to use. |
+| `--markdown` | `false` | Write the digest to a dated Markdown file. |
+| `--output-dir` | `digests` | Directory for Markdown exports. |
 
-## Configuration
+## Development
 
-### Environment Variables
+Install development dependencies and run the checks:
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `OLLAMA_HOST` | localhost:11434 | Ollama API endpoint |
+```bash
+python -m pip install -r requirements-dev.txt
+python -m pytest
+python -m compileall -q domain infrastructure interface usecases main.py
+```
+
+Tests use mocked HTTP and extractor calls, so they do not require a running Ollama instance or live Hacker News requests.
 
 ## Troubleshooting
 
-### Ollama not running
+### Ollama is unavailable
 
-```
-Error: Connection error: [Errno 111] Connection refused
-```
+Start the Ollama server:
 
-Make sure Ollama is running:
 ```bash
 ollama serve
 ```
 
-### Model not found
-
-```
-Error: model 'llama3:8b' not found
-```
-
-Pull the required model:
-```bash
-ollama pull llama3:8b
-```
-
 ### Content extraction fails
 
-Some websites block content extraction. The app will skip to the next story.
+Some sites block automated extraction or respond too slowly. HackerDigest logs the failure and generates a title-based summary instead.
+
+### Invalid limit
+
+`--limit` must be a positive integer:
+
+```bash
+python main.py --limit 10
+```
 
 ## License
 
