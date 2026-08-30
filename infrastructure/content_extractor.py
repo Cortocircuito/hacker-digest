@@ -1,6 +1,12 @@
 import asyncio
 import logging
+import warnings
 
+warnings.filterwarnings(
+    "ignore",
+    message="nltk is not installed.*",
+    category=UserWarning,
+)
 import newspaper
 
 from domain.services import ArticleContentPort
@@ -29,8 +35,8 @@ class NewspaperExtractor(ArticleContentPort):
         except asyncio.TimeoutError:
             logger.warning("Timeout extracting content from %s", url)
             return None
-        except Exception:
-            logger.warning("Failed to extract content from %s", url, exc_info=True)
+        except Exception as e:
+            logger.warning("Failed to extract content from %s: %s", url, e)
             return None
 
     def _fetch_article(self, url: str) -> newspaper.Article:

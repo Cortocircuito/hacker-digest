@@ -38,6 +38,8 @@ async def test_ollama_client_summarize_success():
             summary = await client.summarize(article)
             assert "ESPAÑOL" in summary
             assert "ENGLISH" in summary
+            payload = mock_post.await_args.kwargs["json"]
+            assert payload["options"] == {"num_predict": 160, "temperature": 0.2}
 
 
 @pytest.mark.asyncio

@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 OLLAMA_BASE_URL = "http://localhost:11434"
 DEFAULT_MODEL = "gemma2:2b"
+MAX_SUMMARY_TOKENS = 160
 
 
 def check_ollama_installed() -> None:
@@ -96,7 +97,18 @@ class OllamaClient(SummarizerPort):
             "system": system_prompt,
             "prompt": user_prompt,
             "stream": False,
-            "stop": ["## FORMATO", "FORMATO:", "## RULES", "RULES:", "## FORMAT", "FORMAT:"],
+            "options": {
+                "num_predict": MAX_SUMMARY_TOKENS,
+                "temperature": 0.2,
+            },
+            "stop": [
+                "## FORMATO",
+                "FORMATO:",
+                "## RULES",
+                "RULES:",
+                "## FORMAT",
+                "FORMAT:",
+            ],
         }
         response = await self._client.post("/api/generate", json=payload)
         response.raise_for_status()

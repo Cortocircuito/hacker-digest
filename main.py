@@ -45,7 +45,7 @@ def parse_args() -> argparse.Namespace:
 
 async def main() -> None:
     logging.basicConfig(
-        level=logging.INFO,
+        level=logging.WARNING,
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
 
