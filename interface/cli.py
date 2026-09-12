@@ -17,8 +17,10 @@ from usecases.summarize_article import SummarizeArticle
 console = Console()
 
 
-async def run_cli(summarize_article: SummarizeArticle, limit: int) -> None:
-    console.print("[bold cyan]HackerDigest[/bold cyan] - Fetching top stories...\n")
+async def run_cli(
+    summarize_article: SummarizeArticle, limit: int, source_label: str
+) -> None:
+    console.print(f"[bold cyan]HackerDigest[/bold cyan] - {source_label}\n")
 
     with Progress(
         SpinnerColumn(),
@@ -27,7 +29,7 @@ async def run_cli(summarize_article: SummarizeArticle, limit: int) -> None:
         TaskProgressColumn(),
         console=console,
     ) as progress:
-        task = progress.add_task("Loading from Hacker News...", total=None)
+        task = progress.add_task("Loading stories...", total=None)
 
         def update_progress(phase: str, completed: int, total: int) -> None:
             progress.update(
@@ -47,19 +49,26 @@ async def run_cli(summarize_article: SummarizeArticle, limit: int) -> None:
 
 
 async def run_markdown(
-    summarize_article: SummarizeArticle, limit: int, filename: str
+    summarize_article: SummarizeArticle,
+    limit: int,
+    filename: str,
+    source_label: str,
 ) -> None:
     results = await summarize_article.execute(limit)
 
     lines = ["# HackerDigest\n"]
-    lines.append(f"*{limit} top stories*\n\n---\n")
+    lines.append(f"*{source_label}; {len(results)} stories*\n\n---\n")
 
     for idx, (article, summary) in enumerate(results, 1):
-        lines.append(f"## {idx}. [{article.title}]({article.url})\n")
+        lines.append(f"## {idx}. {article.title}\n")
         lines.append(f"- **Score:** {article.score} | **Comments:** {article.descendants}\n")
         lines.append(f"- **By:** {article.by}\n")
         if article.url:
             lines.append(f"- **Link:** [Read Full Article]({article.url})\n")
+        lines.append(
+            "- **Discussion:** "
+            f"[View on Hacker News](https://news.ycombinator.com/item?id={article.id})\n"
+        )
         lines.append("\n")
 
         if summary and not summary.startswith("["):
@@ -69,7 +78,7 @@ async def run_markdown(
 
         lines.append("---\n")
 
-    with open(filename, "w") as f:
+    with open(filename, "w", encoding="utf-8") as f:
         f.writelines(lines)
 
 
