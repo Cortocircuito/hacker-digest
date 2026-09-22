@@ -1,8 +1,9 @@
 import argparse
 import asyncio
 import logging
+import re
 import sys
-from datetime import date
+from datetime import date, datetime, timezone
 from pathlib import Path
 
 from infrastructure.algolia_client import AlgoliaClient
@@ -11,6 +12,16 @@ from infrastructure.hn_client import HNClient
 from infrastructure.ollama_client import OllamaClient, check_ollama_installed
 from interface.cli import run_cli, run_markdown
 from usecases.summarize_article import SummarizeArticle
+
+
+_DIGEST_FILENAME = re.compile(
+    r"^hacker-digest-(?P<story_date>\d{4}-\d{2}-\d{2})"
+    r"(?:-generated-(?P<generated_on>\d{4}-\d{2}-\d{2}))?\.md$"
+)
+
+
+def _today_utc() -> date:
+    return datetime.now(timezone.utc).date()
 
 
 def parse_args() -> argparse.Namespace:
@@ -50,12 +61,40 @@ def parse_args() -> argparse.Namespace:
 
 
 def _markdown_filename(output_dir: Path, story_date: date | None) -> Path:
-    generated_on = date.today().isoformat()
+    generated_on = _today_utc().isoformat()
     if story_date is None:
         return output_dir / f"hacker-digest-{generated_on}.md"
     return output_dir / (
         f"hacker-digest-{story_date.isoformat()}-generated-{generated_on}.md"
     )
+
+
+def _digest_generation_date(filename: Path) -> date | None:
+    match = _DIGEST_FILENAME.fullmatch(filename.name)
+    if match is None:
+        return None
+
+    try:
+        return date.fromisoformat(match.group("generated_on") or match.group("story_date"))
+    except ValueError:
+        return None
+
+
+def _archive_previous_markdown_digests(output_dir: Path, current_date: date) -> None:
+    """Move prior-month root digests into year/month archive directories."""
+    current_month = (current_date.year, current_date.month)
+
+    for digest in output_dir.glob("*.md"):
+        generated_on = _digest_generation_date(digest)
+        if generated_on is None or (generated_on.year, generated_on.month) >= current_month:
+            continue
+
+        archive_dir = output_dir / f"{generated_on.year:04d}" / f"{generated_on.month:02d}"
+        archive_dir.mkdir(exist_ok=True, parents=True)
+        destination = archive_dir / digest.name
+        if destination.exists():
+            raise FileExistsError(f"Cannot archive {digest}: {destination} already exists")
+        digest.rename(destination)
 
 
 def _resolve_limit(requested_limit: int | None, markdown: bool) -> int:
@@ -81,7 +120,7 @@ async def main() -> None:
     if args.limit is not None and args.limit <= 0:
         print("Error: --limit must be a positive integer")
         sys.exit(1)
-    if args.date is not None and args.date > date.today():
+    if args.date is not None and args.date > _today_utc():
         print("Error: --date cannot be in the future")
         sys.exit(1)
 
@@ -106,6 +145,7 @@ async def main() -> None:
             if args.markdown:
                 output_dir = Path(args.output_dir)
                 output_dir.mkdir(exist_ok=True, parents=True)
+                _archive_previous_markdown_digests(output_dir, _today_utc())
                 filename = _markdown_filename(output_dir, args.date)
                 await run_markdown(
                     summarize_article, limit, str(filename), source_label

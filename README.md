@@ -83,7 +83,10 @@ front page or score at the end of that day.
 Markdown exports include the article URL when available and a link to its Hacker News
 discussion. Historical exports use a filename such as
 `hacker-digest-2026-09-10-generated-2026-09-12.md`; current exports retain the
-`hacker-digest-YYYY-MM-DD.md` name.
+`hacker-digest-YYYY-MM-DD.md` name. The output directory keeps digests generated in
+the current UTC month at its root. On the first Markdown export of a new month,
+earlier root digests are moved to `YYYY/MM` subdirectories, for example
+`digests/2026/09/`.
 
 ## Development
 
