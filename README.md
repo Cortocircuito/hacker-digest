@@ -65,6 +65,11 @@ python main.py --date 2026-09-10 --markdown
 python main.py --help
 ```
 
+Both terminal and Markdown modes show live processing progress on screen. Extraction
+reports completed totals; sequential summarization shows the current story, for
+example, `Summarizing story 3 of 20 (2 completed)`. Counts use the number of stories
+actually fetched. Progress is not included in the exported Markdown file.
+
 ### Options
 
 | Flag | Default | Description |

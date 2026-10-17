@@ -22,6 +22,18 @@ async def run_cli(
 ) -> None:
     console.print(f"[bold cyan]HackerDigest[/bold cyan] - {source_label}\n")
 
+    results = await _execute_with_progress(summarize_article, limit)
+
+    console.print(f"\n[green]Loaded {len(results)} stories[/green]\n")
+
+    for idx, (article, summary) in enumerate(results, 1):
+        _display_article(idx, article, summary)
+        console.print()
+
+
+async def _execute_with_progress(
+    summarize_article: SummarizeArticle, limit: int
+) -> list[tuple[Article, str]]:
     with Progress(
         SpinnerColumn(),
         TextColumn("[progress.description]{task.description}"),
@@ -32,20 +44,21 @@ async def run_cli(
         task = progress.add_task("Loading stories...", total=None)
 
         def update_progress(phase: str, completed: int, total: int) -> None:
+            if phase == "Summarizing" and completed < total:
+                description = (
+                    f"Summarizing story {completed + 1} of {total} ({completed} completed)"
+                )
+            else:
+                description = f"{phase} stories ({completed}/{total} completed)"
             progress.update(
                 task,
                 completed=completed,
                 total=total,
-                description=f"{phase} stories ({completed}/{total})...",
+                description=description,
+                refresh=True,
             )
 
-        results = await summarize_article.execute(limit, progress_callback=update_progress)
-
-    console.print(f"\n[green]Loaded {len(results)} stories[/green]\n")
-
-    for idx, (article, summary) in enumerate(results, 1):
-        _display_article(idx, article, summary)
-        console.print()
+        return await summarize_article.execute(limit, progress_callback=update_progress)
 
 
 async def run_markdown(
@@ -54,7 +67,7 @@ async def run_markdown(
     filename: str,
     source_label: str,
 ) -> None:
-    results = await summarize_article.execute(limit)
+    results = await _execute_with_progress(summarize_article, limit)
 
     lines = ["# HackerDigest\n"]
     lines.append(f"*{source_label}; {len(results)} stories*\n\n---\n")
