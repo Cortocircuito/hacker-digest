@@ -16,7 +16,20 @@ HackerDigest is an asynchronous CLI that retrieves Hacker News stories, extracts
 ## Requirements
 
 - Python 3.10+
-- [Ollama](https://ollama.com/) installed and running at `http://localhost:11434`
+- [Ollama](https://ollama.com/) installed, available on `PATH`, and running at `http://localhost:11434`
+- Internet access to fetch stories, article content, and any model not already downloaded.
+
+### Hardware expectations
+
+There is no project-validated minimum hardware specification or performance benchmark.
+Model memory usage includes more than its download size. Leave room for the operating
+system, Ollama, and article extraction; low-memory machines may swap or fail to load
+the model. Older CPUs can make summarization slow even when the model fits in RAM.
+
+Start with `python main.py --limit 1` to check your setup before processing a full
+batch. `--model` selects a different model, but smaller models can reduce summary
+quality. Check Ollama's hardware support for your machine; installing the Python
+application alone does not establish model compatibility or acceptable speed.
 
 ## Installation
 
@@ -91,7 +104,28 @@ discussion. Historical exports use a filename such as
 `hacker-digest-YYYY-MM-DD.md` name. The output directory keeps digests generated in
 the current UTC month at its root. On the first Markdown export of a new month,
 earlier root digests are moved to `YYYY/MM` subdirectories, for example
-`digests/2026/09/`.
+`digests/2026/09/`. Historical digests are archived by their generation month, not
+the month of the stories. An existing archive destination causes an error rather
+than being overwritten.
+
+**Export safety:** generating the same output filename again overwrites that file.
+Exports are written directly, not atomically, and only after processing the batch;
+there is no incremental save or resume. Use a separate `--output-dir` to keep another
+copy of a digest.
+
+## Current limitations
+
+- **Partial article input:** only the first 3,000 characters of extracted article
+  text are sent to the model. Important information later in an article may be missed.
+- **Title-only fallback:** when no article content is available, the model receives
+  only the title. The resulting summary is not explicitly labeled as title-only.
+- **Unverified generated text:** bilingual formatting and factual accuracy are
+  requested in the prompt, not validated. Generation is capped at 160 tokens across
+  both languages, so responses may be incomplete. Check the linked source before
+  relying on a summary.
+- **Local Ollama configuration:** the server address and HTTP timeout are currently
+  fixed in code; there are no CLI options for a remote server or a different timeout.
+- **No result cache:** running the same query again fetches and summarizes it again.
 
 ## Development
 
@@ -117,6 +151,18 @@ Start the Ollama server:
 ```bash
 ollama serve
 ```
+
+### Summarization is slow or fails
+
+Summaries are generated one at a time without streaming generated text. The progress
+indicator shows the current story, not token-level progress. The Ollama HTTP client
+uses a 120-second timeout for network operations, including waiting for response data;
+this is not a total time limit for the batch. Slow generation can trigger a timeout.
+Summary failures are logged and displayed as `[Error generating summary]`, while
+processing continues with the next story.
+
+Try one story first and consider a smaller model if your machine is resource-limited.
+Reducing `--limit` reduces batch size, not the work needed for each individual summary.
 
 ### Content extraction fails
 
