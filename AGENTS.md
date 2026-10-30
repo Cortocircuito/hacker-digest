@@ -20,7 +20,7 @@
 - `HNClient`, `AlgoliaClient`, and `OllamaClient` own `httpx.AsyncClient` instances. Use them as async context managers or call `await close()`.
 - The default local model is `gemma2:2b` at `http://localhost:11434`. `ensure_model()` matches exact tags; an untagged request may match only `<model>:latest`.
 - `NewspaperExtractor` is synchronous internally: keep blocking work in `asyncio.to_thread`, enforce both the coroutine and Newspaper4k request timeout, and send at most `MAX_CHARS` (3,000) characters to Ollama.
-- `SummarizeArticle` preserves article order, caps extraction concurrency at three, and deliberately summarizes sequentially. Extraction failures pass `None`; summary failures return `[Error generating summary]`. Keep operational failures logged with article context.
+- `SummarizeArticle` preserves article order, caps extraction concurrency at three, and deliberately summarizes sequentially. Stories without a URL, extraction failures, and missing/empty/whitespace-only content skip the summarizer and retain the story with `Resumen no disponible: no se pudo obtener el contenido`. Both output modes display this as a notice, not a generated summary; skipped stories still complete progress. Summary failures return `[Error generating summary]`. Keep operational failures logged with article context.
 
 ## CLI Output
 

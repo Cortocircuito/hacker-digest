@@ -23,6 +23,41 @@ def _articles(count: int) -> list[Article]:
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("missing", ["no_url", None, "", " \n\t"])
+async def test_missing_content_skips_model_and_completes_progress(missing):
+    articles = _articles(2)
+    if missing == "no_url":
+        articles[0].url = None
+    provider = AsyncMock()
+    provider.get_top_stories.return_value = articles
+    extractor = AsyncMock()
+    extractor.extract_content.side_effect = (
+        ["article content"] if missing == "no_url" else [missing, "article content"]
+    )
+    summarizer = AsyncMock()
+    summarizer.summarize.return_value = "summary"
+    progress = []
+
+    results = await SummarizeArticle(provider, summarizer, extractor).execute(
+        progress_callback=lambda *event: progress.append(event)
+    )
+
+    assert results == [
+        (articles[0], "Resumen no disponible: no se pudo obtener el contenido"),
+        (articles[1], "summary"),
+    ]
+    summarizer.summarize.assert_awaited_once_with(articles[1], "article content")
+    assert extractor.extract_content.await_args_list == (
+        [call(articles[1].url)] if missing == "no_url"
+        else [call(articles[0].url), call(articles[1].url)]
+    )
+    assert progress == [
+        ("Extracting", 0, 2), ("Extracting", 1, 2), ("Extracting", 2, 2),
+        ("Summarizing", 0, 2), ("Summarizing", 1, 2), ("Summarizing", 2, 2),
+    ]
+
+
+@pytest.mark.asyncio
 async def test_summarize_article_success():
     mock_hn_client = AsyncMock()
     mock_summarizer = AsyncMock()
@@ -65,6 +100,7 @@ async def test_summarize_article_error_handling():
         descendants=10,
     )
     mock_hn_client.get_top_stories.return_value = [article]
+    mock_content_extractor.extract_content.return_value = "content"
     mock_summarizer.summarize.side_effect = Exception("API Error")
 
     use_case = SummarizeArticle(mock_hn_client, mock_summarizer, mock_content_extractor)
@@ -183,7 +219,10 @@ async def test_summarize_article_continues_after_extraction_failure():
     results = await use_case.execute()
 
     assert [article for article, _ in results] == articles
+    assert results == [
+        (articles[0], "Resumen no disponible: no se pudo obtener el contenido"),
+        (articles[1], "summary"),
+    ]
     assert mock_summarizer.summarize.await_args_list == [
-        call(articles[0], None),
         call(articles[1], "article content"),
     ]

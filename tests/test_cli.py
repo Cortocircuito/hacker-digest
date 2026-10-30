@@ -6,6 +6,7 @@ from rich.console import Console
 
 from domain.entities import Article
 from interface import cli
+from usecases.summarize_article import SummarizeArticle
 
 
 @pytest.mark.asyncio
@@ -121,6 +122,45 @@ async def test_run_markdown_uses_hacker_news_link_when_article_has_no_url(tmp_pa
     assert "Read Full Article" not in content
     assert "https://news.ycombinator.com/item?id=123" in content
     assert "(None)" not in content
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("markdown", [False, True])
+@pytest.mark.parametrize("url", [None, "https://example.com/full"])
+async def test_missing_content_notice_in_both_modes(monkeypatch, tmp_path, markdown, url):
+    output = StringIO()
+    monkeypatch.setattr(
+        cli, "console", Console(file=output, force_terminal=False, width=160)
+    )
+    article = _article(url)
+    provider = AsyncMock()
+    provider.get_top_stories.return_value = [article]
+    extractor = AsyncMock()
+    extractor.extract_content.return_value = None
+    summarizer = AsyncMock()
+    usecase = SummarizeArticle(provider, summarizer, extractor)
+    notice = "Resumen no disponible: no se pudo obtener el contenido"
+
+    if markdown:
+        filename = tmp_path / "missing.md"
+        await cli.run_markdown(usecase, 1, str(filename), "Current top stories")
+        rendered = filename.read_text(encoding="utf-8")
+        assert "### Summary" not in rendered
+        assert "https://news.ycombinator.com/item?id=123" in rendered
+        if url:
+            assert f"[Read Full Article]({url})" in rendered
+        else:
+            assert "Read Full Article" not in rendered
+        assert "Extracting" not in rendered
+        assert "Summarizing" not in rendered
+    else:
+        await cli.run_cli(usecase, 1, "Current top stories")
+        rendered = output.getvalue()
+        assert "Loaded 1 stories" in rendered
+    assert notice in rendered
+    assert article.title in rendered
+    assert "Summarizing stories (1/1 completed)" in output.getvalue()
+    summarizer.summarize.assert_not_awaited()
 
 
 @pytest.mark.asyncio

@@ -7,6 +7,7 @@ from domain.services import ArticleContentPort, HackerNewsPort, SummarizerPort
 
 logger = logging.getLogger(__name__)
 
+SUMMARY_UNAVAILABLE = "Resumen no disponible: no se pudo obtener el contenido"
 MAX_CONCURRENT_EXTRACTIONS = 3
 ProgressCallback = Callable[[str, int, int], None]
 
@@ -60,7 +61,10 @@ class SummarizeArticle:
             zip(articles, contents), start=1
         ):
             try:
-                summary = await self._summarizer.summarize(article, content)
+                if content and content.strip():
+                    summary = await self._summarizer.summarize(article, content)
+                else:
+                    summary = SUMMARY_UNAVAILABLE
                 results.append((article, summary))
             except Exception as e:
                 logger.error(
