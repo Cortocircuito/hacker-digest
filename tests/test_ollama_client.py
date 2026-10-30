@@ -35,11 +35,14 @@ async def test_ollama_client_summarize_success():
                 time=1234567890,
                 descendants=10,
             )
-            summary = await client.summarize(article)
+            summary = await client.summarize(article, "Extracted article content")
             assert "ESPAÑOL" in summary
             assert "ENGLISH" in summary
             payload = mock_post.await_args.kwargs["json"]
             assert payload["options"] == {"num_predict": 160, "temperature": 0.2}
+            assert payload["prompt"] == "Title: Test\n\nExtracted article content"
+            assert "Si solo tienes el título" not in payload["system"]
+            assert "Usa solo información del artículo proporcionado" in payload["system"]
 
 
 @pytest.mark.asyncio

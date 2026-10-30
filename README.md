@@ -117,8 +117,10 @@ copy of a digest.
 
 - **Partial article input:** only the first 3,000 characters of extracted article
   text are sent to the model. Important information later in an article may be missed.
-- **Title-only fallback:** when no article content is available, the model receives
-  only the title. The resulting summary is not explicitly labeled as title-only.
+- **Unavailable article content:** stories without a URL, or whose extracted content
+  is missing, empty, or whitespace-only, keep their story and available links but
+  are not sent to the model. Both output modes show
+  `Resumen no disponible: no se pudo obtener el contenido` instead of a summary.
 - **Unverified generated text:** bilingual formatting and factual accuracy are
   requested in the prompt, not validated. Generation is capped at 160 tokens across
   both languages, so responses may be incomplete. Check the linked source before
@@ -166,7 +168,10 @@ Reducing `--limit` reduces batch size, not the work needed for each individual s
 
 ### Content extraction fails
 
-Some sites block automated extraction or respond too slowly. HackerDigest logs the failure and generates a title-based summary instead.
+Some sites block automated extraction or respond too slowly. HackerDigest logs the
+failure and keeps the story and its available links without calling the model. Both
+terminal and Markdown output show `Resumen no disponible: no se pudo obtener el contenido`.
+Titles alone are not used to generate summaries.
 
 ### Invalid limit
 

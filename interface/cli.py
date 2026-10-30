@@ -11,7 +11,7 @@ from rich.progress import (
 from rich.table import Table
 
 from domain.entities import Article
-from usecases.summarize_article import SummarizeArticle
+from usecases.summarize_article import SUMMARY_UNAVAILABLE, SummarizeArticle
 
 
 console = Console()
@@ -84,7 +84,7 @@ async def run_markdown(
         )
         lines.append("\n")
 
-        if summary and not summary.startswith("["):
+        if summary and summary != SUMMARY_UNAVAILABLE and not summary.startswith("["):
             lines.append(f"### Summary\n\n{summary}\n\n")
         else:
             lines.append(f"*{summary}*\n\n")
@@ -109,7 +109,9 @@ def _display_article(idx: int, article: Article, summary: str) -> None:
 
     console.print(table)
 
-    if summary and not summary.startswith("["):
+    if summary == SUMMARY_UNAVAILABLE:
+        console.print(summary)
+    elif summary and not summary.startswith("["):
         console.print(Panel(Markdown(summary), border_style="cyan", padding=(1, 2)))
     else:
         console.print(f"[red]{summary}[/red]")

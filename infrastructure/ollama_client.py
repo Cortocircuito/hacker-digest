@@ -128,8 +128,7 @@ REGLAS:
 - 2-3 oraciones por idioma (aprox 20-40 palabras)
 - No incluyas palabras como "Este artículo trata de..." o "In summary..."
 - Usa solo información del artículo proporcionado
-- Si se proporciona contenido del artículo, úsalo para hacer el resumen más específico
-- Si solo tienes el título, basa tu resumen únicamente en él
+- Basa el resumen en el contenido del artículo, no solo en su título
 - NO agregues información externa ni conclusiones
 - Responde ÚNICAMENTE con el formato de arriba, nada más"""
 
