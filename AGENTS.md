@@ -1,5 +1,9 @@
 # HackerDigest
 
+Contributor and coding-agent guidance. For installation, CLI usage, troubleshooting,
+and user-facing limitations, see [README.md](README.md). Keep those instructions in
+the README; this file records development constraints and behavioral contracts.
+
 ## Setup and Verification
 
 - Python 3.10+; runtime dependencies are in `requirements.txt`, test dependencies in `requirements-dev.txt`.

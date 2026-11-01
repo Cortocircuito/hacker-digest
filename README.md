@@ -2,6 +2,10 @@
 
 HackerDigest is an asynchronous CLI that retrieves Hacker News stories, extracts linked article content, and generates concise Spanish/English summaries with a local Ollama model.
 
+[Installation](#installation) · [Usage](#usage) · [Markdown exports](#markdown-exports) ·
+[Limitations](#current-limitations) · [Troubleshooting](#troubleshooting) ·
+[Development](#development)
+
 ## Features
 
 - Fetches the current top stories from the Hacker News Firebase API.
@@ -44,11 +48,16 @@ source venv/bin/activate  # Linux/macOS
 python -m pip install -r requirements.txt
 ```
 
-The default model is `gemma2:2b`. HackerDigest checks for it and pulls it automatically when absent. You can also pull it manually:
+Make sure Ollama is running before using HackerDigest. If it is not already running,
+start it in a separate terminal:
 
 ```bash
-ollama pull gemma2:2b
+ollama serve
 ```
+
+The default model is `gemma2:2b`. HackerDigest checks for the selected model and pulls
+it automatically when absent. To download the default model ahead of time, run
+`ollama pull gemma2:2b`.
 
 ## Usage
 
@@ -93,20 +102,31 @@ actually fetched. Progress is not included in the exported Markdown file.
 | `--output-dir` | `digests` | Directory for Markdown exports. |
 | `--date` | Current top stories | Query stories submitted on this UTC date (`YYYY-MM-DD`) through Algolia. Future dates are rejected. |
 
+### Current versus date-based queries
+
 Without `--date`, HackerDigest uses Hacker News' current `topstories` ranking. With
 `--date`, it uses Algolia's index, fetches all stories submitted during that UTC day,
 and ranks them by their current score. Date queries do not recreate the Hacker News
 front page or score at the end of that day.
 
-Markdown exports include the article URL when available and a link to its Hacker News
-discussion. Historical exports use a filename such as
-`hacker-digest-2026-09-10-generated-2026-09-12.md`; current exports retain the
-`hacker-digest-YYYY-MM-DD.md` name. The output directory keeps digests generated in
-the current UTC month at its root. On the first Markdown export of a new month,
-earlier root digests are moved to `YYYY/MM` subdirectories, for example
-`digests/2026/09/`. Historical digests are archived by their generation month, not
-the month of the stories. An existing archive destination causes an error rather
-than being overwritten.
+## Markdown exports
+
+Exports include the article URL when available and a link to its Hacker News
+discussion. Files are written in UTF-8 under `--output-dir` (default: `digests/`).
+
+| Query | Filename |
+| --- | --- |
+| Current top stories | `hacker-digest-YYYY-MM-DD.md` |
+| With `--date` | `hacker-digest-YYYY-MM-DD-generated-YYYY-MM-DD.md` |
+
+For date-based exports, the first date is the story date and the second is the
+generation date. All filename dates use UTC.
+
+Before each Markdown batch, recognized root digests generated in earlier months
+are moved to `YYYY/MM` subdirectories, for example `digests/2026/09/`. Archiving
+uses the generation month, not the story month. Current/future-month digests and
+unrecognized filenames stay in place. An existing archive destination causes an
+error rather than being overwritten.
 
 **Export safety:** generating the same output filename again overwrites that file.
 Exports are written directly, not atomically, and only after processing the batch;
@@ -118,9 +138,11 @@ copy of a digest.
 - **Partial article input:** only the first 3,000 characters of extracted article
   text are sent to the model. Important information later in an article may be missed.
 - **Unavailable article content:** stories without a URL, or whose extracted content
-  is missing, empty, or whitespace-only, keep their story and available links but
+  cannot be extracted or is missing, empty, or whitespace-only, keep their available links but
   are not sent to the model. Both output modes show
   `Resumen no disponible: no se pudo obtener el contenido` instead of a summary.
+  Titles alone are never used to generate summaries; skipped stories still complete
+  progress. See [content extraction failures](#content-extraction-fails).
 - **Unverified generated text:** bilingual formatting and factual accuracy are
   requested in the prompt, not validated. Generation is capped at 160 tokens across
   both languages, so responses may be incomplete. Check the linked source before
@@ -129,30 +151,12 @@ copy of a digest.
   fixed in code; there are no CLI options for a remote server or a different timeout.
 - **No result cache:** running the same query again fetches and summarizes it again.
 
-## Development
-
-Install development dependencies in the activated virtual environment and run the
-checks:
-
-```bash
-python -m pip install -r requirements-dev.txt
-python -m pytest
-python -m compileall -q domain infrastructure interface usecases main.py
-```
-
-Run one test module with `python -m pytest tests/test_algolia_client.py`. Tests mock
-HTTP and Newspaper4k calls, so they do not require a running Ollama instance or live
-Hacker News requests.
-
 ## Troubleshooting
 
 ### Ollama is unavailable
 
-Start the Ollama server:
-
-```bash
-ollama serve
-```
+Check that Ollama is installed and available on `PATH`, then start the server with
+`ollama serve` if needed. HackerDigest expects it at `http://localhost:11434`.
 
 ### Summarization is slow or fails
 
@@ -168,27 +172,36 @@ Reducing `--limit` reduces batch size, not the work needed for each individual s
 
 ### Content extraction fails
 
-Some sites block automated extraction or respond too slowly. HackerDigest logs the
-failure and keeps the story and its available links without calling the model. Both
-terminal and Markdown output show `Resumen no disponible: no se pudo obtener el contenido`.
-Titles alone are not used to generate summaries.
+Some sites block automated extraction or respond too slowly. Check the logged
+failure and open the article link directly. The story remains in the digest with
+the [unavailable-content notice](#current-limitations); retrying does not guarantee
+that the site will permit extraction.
 
-### Invalid limit
+### Invalid arguments
 
-`--limit` must be a positive integer:
+`--limit` must be a positive integer. `--date` must use `YYYY-MM-DD` and cannot be
+later than the current UTC date. See the [options table](#options) for defaults.
 
-```bash
-python main.py --limit 10
-```
+## Development
 
-### Invalid date
-
-`--date` accepts `YYYY-MM-DD` in UTC and rejects future dates:
+Follow [Installation](#installation) to create and activate `venv`, then install
+development dependencies and run the checks:
 
 ```bash
-python main.py --date 2026-09-10
+python -m pip install -r requirements-dev.txt
+python -m pytest
+python -m compileall -q domain infrastructure interface usecases main.py
 ```
+
+Run one test module with `python -m pytest tests/test_algolia_client.py`. Tests mock
+HTTP and Newspaper4k calls, so they do not require a running Ollama instance or live
+Hacker News requests. They verify application behavior, not real-model summary
+quality or hardware performance.
+
+See [AGENTS.md](AGENTS.md) for architecture boundaries, runtime contracts, and
+change-specific verification requirements. Keep user-facing instructions in this
+README and contributor/agent constraints in AGENTS.md.
 
 ## License
 
-MIT
+[MIT](LICENSE.txt)
